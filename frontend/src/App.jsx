@@ -6,7 +6,7 @@ function App() {
     <>
     <div id="container">
       <div id="header">
-        <h1>header</h1>
+        <h1>chat</h1>
       </div>
       <div id="content">
         <div id="sidebar">
@@ -29,7 +29,29 @@ function App() {
           </div>
         </div>
         <div id="chatbox">
-          <h2>chatbox</h2>
+            <div id="chat_header">
+              <h3>chat header</h3>
+            </div>
+            <div id="chat_window">
+              <p><span>user1:</span> hello this is a relatively long message let's see what happens</p>
+              <p><span>user1:</span>hello</p>
+              <p><span>user1:</span>hello</p>
+              <p><span>user1:</span>hello</p>
+              <p><span>user1:</span>hello</p>
+              <p><span>user1:</span>hello</p>
+              <p><span>user1:</span>hello</p>
+              <p><span>user1:</span>hello</p>
+              <p><span>user1:</span>hello</p>
+              <p><span>user1:</span>hello</p>
+              <p><span>user1:</span>hello</p>
+              <p><span>user1:</span>hello</p>
+              <p><span>user1:</span>hello</p>
+              <p><span>user1:</span>hello</p>
+            </div>
+            <div id="chat_input">
+              <input type="text" placeholder="send message" />
+              <button>send</button>
+            </div>
         </div>
       </div>
     </div>
