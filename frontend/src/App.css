@@ -1,0 +1,62 @@
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+#container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#header {
+  flex: 0 0 auto;
+  border-bottom: 1px solid #000;
+  width: 100%;
+}
+
+#header h1 {
+  padding: 0;
+  margin: 0;
+}
+
+#content {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+}
+
+#sidebar {
+  flex: 0 0 200px;
+  display: flex;
+  flex-direction: column;
+  background: red;
+  overflow: hidden;
+}
+
+#chats_container {
+  flex: 1 1 auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+#chats {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  background: green;
+}
+
+#account {
+  flex: 0 0 auto;
+  background: blue;
+}
+
+#chatbox {
+  flex: 1 1 auto;
+  background: orange;
+  overflow: auto;
+}
