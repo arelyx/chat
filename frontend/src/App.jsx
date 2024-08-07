@@ -11,7 +11,7 @@ function App() {
         </div>
         <div id="error">
           <div id="error_text">
-            <p>error: </p>
+            <p>error:</p>
           </div>
           <div>
             <button id="error_button">clear</button>
