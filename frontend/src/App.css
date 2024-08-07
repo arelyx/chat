@@ -20,6 +20,7 @@ html, body {
 #header h1 {
   padding: 0;
   margin: 0;
+  margin-left:10px;
 }
 
 #content {
@@ -93,7 +94,12 @@ html, body {
 #chat_header {
   flex: 0 0 auto;
   border-bottom: 1px solid;
+  padding-left:10px;
   /* background: yellow; */
+}
+
+#chat_header h3 {
+  margin:10px 0px 10px 0px;
 }
 
 #chat_window {
@@ -138,4 +144,26 @@ html, body {
 
 #login_buttons button {
   width: 48%;
+}
+
+#new_chat {
+  flex: 0 0 auto;
+  display: flex;
+  padding: 10px;
+  border-right: 1px solid;
+  border-bottom: 1px solid;
+}
+
+#new_chat_input {
+  flex: 1 1 auto;
+  margin-right: 10px;
+}
+
+#new_chat_input input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+#new_chat_button {
+  flex: 0 0 auto;
 }

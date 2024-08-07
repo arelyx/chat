@@ -10,6 +10,14 @@ function App() {
       </div>
       <div id="content">
         <div id="sidebar">
+        <div id="new_chat">
+            <div id="new_chat_input">
+              <input placeholder="chat name"></input>
+            </div>
+            <div id="new_chat_button">
+              <button>create</button>
+            </div>
+          </div>
           <div id="chats_container">
             <div id="chats">
               <p>chat 1</p>
