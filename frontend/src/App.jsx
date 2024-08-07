@@ -6,7 +6,17 @@ function App() {
     <>
     <div id="container">
       <div id="header">
-        <h1>chat</h1>
+        <div id="logo">
+          <h1>chat</h1>
+        </div>
+        <div id="error">
+          <div id="error_text">
+            <p>error: </p>
+          </div>
+          <div>
+            <button id="error_button">clear</button>
+          </div>
+        </div>
       </div>
       <div id="content">
         <div id="sidebar">
