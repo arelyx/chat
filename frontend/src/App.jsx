@@ -24,8 +24,23 @@ function App() {
               <p>chat 10</p>
             </div>
           </div>
-          <div id="account">
-            <h3>account</h3>
+          {/* <div id="login">
+            <div id="login_inputs">
+              <input placeholder="username"></input>
+              <input placeholder="password" type="password"></input>
+            </div>
+            <div id="login_buttons">
+              <button>register</button>
+              <button>login</button>
+            </div>
+          </div> */}
+          <div id="user_container">
+            <div id="username">
+              <h3>username</h3>
+            </div>
+            <div id="logout">
+              <button>logout</button>
+            </div>
           </div>
         </div>
         <div id="chatbox">

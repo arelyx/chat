@@ -54,10 +54,32 @@ html, body {
   /* background: green; */
 }
 
-#account {
+#login {
   flex: 0 0 auto;
   border-right: 1px solid;
-  /* background: blue; */
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+#user_container{
+  display:flex;
+  flex-direction: row;
+  border-right: 1px solid;
+}
+
+#username{
+  flex: 1 1 auto;
+}
+
+#username h3{
+  margin: 0;
+  padding: 10px;
+}
+
+#logout{
+  flex: 0 0 auto;
+  padding:10px;
 }
 
 #chatbox {
@@ -95,4 +117,25 @@ html, body {
 
 #chat_input button {
   flex: 0 0 auto;
+}
+
+#login_inputs {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 3px;
+}
+
+#login_inputs input {
+  margin-bottom: 5px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+#login_buttons {
+  display: flex;
+  justify-content: space-between;
+}
+
+#login_buttons button {
+  width: 48%;
 }
