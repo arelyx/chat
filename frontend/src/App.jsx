@@ -1,6 +1,36 @@
+import {useState, useEffect} from "react"
+import axios from "axios"
+
 import './App.css'
 
 function App() {
+  const url = "http://localhost:3000";
+  const [userToken, setUserToken] = useState(localStorage.getItem("token"));
+  const [loggedIn, setLoggedIn] = useState(false);
+  useEffect(() => {
+    if (userToken) {
+      axios.get(`${url}/user`, {
+        headers: {
+          "Authorization": `Bearer ${userToken}`
+        }
+      })
+      .then(
+        (res) => {
+          console.log(res.data);
+        }
+      )
+      .catch(
+        (err) => {
+          console.log(err);
+          setLoggedIn(false);
+        }
+      )
+    }
+    else {
+      console.log("no token");
+      setLoggedIn(false);
+    }
+  }, [userToken])
 
   return (
     <>
@@ -42,24 +72,27 @@ function App() {
               <p>chat 10</p>
             </div>
           </div>
-          {/* <div id="login">
-            <div id="login_inputs">
-              <input placeholder="username"></input>
-              <input placeholder="password" type="password"></input>
+          {loggedIn ? (
+            <div id="user_container">
+              <div id="username">
+                <h3>username</h3>
+              </div>
+              <div id="logout">
+                <button>logout</button>
+              </div>
             </div>
-            <div id="login_buttons">
-              <button>register</button>
-              <button>login</button>
+          ) : (
+            <div id="login">
+              <div id="login_inputs">
+                <input placeholder="username"></input>
+                <input placeholder="password" type="password"></input>
+              </div>
+              <div id="login_buttons">
+                <button>register</button>
+                <button>login</button>
+              </div>
             </div>
-          </div> */}
-          <div id="user_container">
-            <div id="username">
-              <h3>username</h3>
-            </div>
-            <div id="logout">
-              <button>logout</button>
-            </div>
-          </div>
+          )}
         </div>
         <div id="chatbox">
             <div id="chat_header">
