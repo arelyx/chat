@@ -20,12 +20,19 @@ app.use(express.json());
 
 const authenticate = (req, res, next) => {
     console.log("Authenticating...");
-    const decodedToken = jwt.verify(req.headers.authorization.split(" ")[1], process.env.JWT_SECRET);
-    if (!decodedToken){
+    console.log(req.headers.authorization);
+    try{
+        const decodedToken = jwt.verify(req.headers.authorization.split(" ")[1], process.env.JWT_SECRET);
+        if (!decodedToken){
+            res.status(401).json({"error": "Unauthorized"});
+        }
+        req.username = decodedToken.username;
+        next();
+    }
+    catch (error) {
+        console.log(`Unable to authenticate... ${error}`);
         res.status(401).json({"error": "Unauthorized"});
     }
-    req.username = decodedToken.username;
-    next();
 }
 
 app.get("/", (req, res) => {
@@ -69,6 +76,7 @@ app.post("/register", (req, res) => {
 app.post("/login", (req, res) => {
     const username = req.body.username;
     const password = req.body.password;
+    console.log("Logging in user...");
     pool.query("SELECT * FROM users WHERE name = $1", [username], (error, results) => {
         if (error) {
             console.log(`Unable to login user... ${error}`);
@@ -82,6 +90,7 @@ app.post("/login", (req, res) => {
                 const user = results.rows[0];
                 if (bcrypt.compareSync(password, user.password_hash)){
                     const token = jwt.sign({username: username}, process.env.JWT_SECRET, {expiresIn: "6h"});
+                    console.log("logged user in!");
                     res.status(200).json({"message": "User logged in", "token": token});
                 }
                 else {
@@ -92,6 +101,34 @@ app.post("/login", (req, res) => {
     })
 }
 )
+
+app.get("/chats", (req, res) => {
+    pool.query("SELECT * FROM chats  ORDER BY date_created DESC", (error, results) => {
+        if (error) {
+            console.log(`Unable to get chats... ${error}`);
+            res.status(500).json({"error": "Error getting chats"});
+        }
+        else {
+            console.log("ChatRequest results: "+ JSON.stringify(results.rows));
+            res.status(200).json(results.rows);
+        }
+    })
+}
+)
+
+app.post("/chats", authenticate, (req, res) => {
+    const chatName = req.body.name;
+    const chatAuthor = req.username;
+    pool.query("INSERT INTO chats (author, name) VALUES ($1, $2)", [chatAuthor, chatName], (error, results) => {
+        if (error) {
+            console.log(`Unable to create chat... ${error}`);
+            res.status(500).json({"error": "Error creating chat"});
+        }
+        else {
+            res.status(200).json({"message": "Chat created"});
+        }
+    })
+})
 
 app.listen(3000, () => {
     console.log("Server started on port 3000");

@@ -12,6 +12,13 @@ function App() {
   const [loginPassword, setLoginPassword] = useState("");
   const [error, setError] = useState("");
   const [showError, setShowError] = useState(false);
+  const [chatList, setChatList] = useState([]);
+  const [newChatName, setNewChatName] = useState("");
+  const [currentChat, setCurrentChat] = useState("");
+
+  useEffect(() => {
+    console.log("New chat name: ", newChatName);
+  }, [newChatName]);
 
   const handleLogin = () => {
     console.log("Attempting login...");
@@ -63,6 +70,7 @@ function App() {
         localStorage.setItem("token", res.data.token);
         setLoggedIn(true);
         setUsername(loginUsername);
+        setUserToken(res.data.token);
       }
     )
     .catch(
@@ -72,6 +80,61 @@ function App() {
       }
     )
   }
+
+  const getChats = () => {
+    axios.get(`${url}/chats`)
+    .then(
+      (res) => {
+        console.log(`ChatList: ${JSON.stringify(res.data)}`);
+        setChatList(res.data);
+      }
+    )
+    .catch(
+      (err) => {
+        setError(`${err.response.data.error}`);
+        setShowError(true);
+      }
+    ) 
+  }
+
+  const handleChatCreate = () => {
+    console.log("Attempting to create chat...");
+    if (newChatName === "") {
+      setError("new chat name is empty");
+      setShowError(true);
+      return;
+    }
+    axios.post(`${url}/chats`, {
+      name: newChatName,
+      admin: username,
+    },
+    {
+      headers: {
+      "Authorization": `Bearer ${userToken}`
+      }
+    })
+    .then(
+      (res) => {
+        console.log(`Successfully created chat: ${JSON.stringify(res.data)}`);
+        getChats();
+      }
+    )
+    .catch(
+      (err) => {
+        console.log(err);
+        setError(`${err.response.data.error}`);
+        setShowError(true);
+      }
+    )
+  }
+
+  const handleChatDelete = () => {
+    console.log("Attempting to delete chat...");
+  }
+
+  useEffect(() => {
+    getChats();
+  }, []);
 
   useEffect(() => {
     if (userToken) {
@@ -128,24 +191,22 @@ function App() {
         <div id="sidebar">
         <div id="new_chat">
             <div id="new_chat_input">
-              <input placeholder="chat name"></input>
+              <input placeholder="chat name" onChange= {(e) => setNewChatName(e.target.value)}></input>
             </div>
             <div id="new_chat_button">
-              <button>create</button>
+              <button onClick={handleChatCreate}>create</button>
             </div>
           </div>
           <div id="chats_container">
             <div id="chats">
-              <p>chat 1</p>
-              <p>chat 2</p>
-              <p>chat 3</p>
-              <p>chat 4</p>
-              <p>chat 5</p>
-              <p>chat 6</p>
-              <p>chat 7</p>
-              <p>chat 8</p>
-              <p>chat 9</p>
-              <p>chat 10</p>
+              {chatList.map((chat) => {
+                return (
+                  <div id="chat">
+                    <p>{chat.name}</p>
+                  </div>
+                )
+              }
+            )}
             </div>
           </div>
           {loggedIn ? (
@@ -172,7 +233,13 @@ function App() {
         </div>
         <div id="chatbox">
             <div id="chat_header">
-              <h3>chat header</h3>
+              <div id="chat_name">
+                <h3>chat header</h3>
+              </div>
+              <div id="chat_options">
+                {/* <p>admin: username</p> */}
+                <button onClick={handleChatDelete}>delete chat</button>
+              </div>
             </div>
             <div id="chat_window">
               <p><span>user1:</span> hello this is a relatively long message let's see what happens</p>
