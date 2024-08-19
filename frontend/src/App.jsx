@@ -6,7 +6,73 @@ import './App.css'
 function App() {
   const url = "http://localhost:3000";
   const [userToken, setUserToken] = useState(localStorage.getItem("token"));
+  const [username, setUsername] = useState("");
   const [loggedIn, setLoggedIn] = useState(false);
+  const [loginUsername, setLoginUsername] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [error, setError] = useState("");
+  const [showError, setShowError] = useState(false);
+
+  const handleLogin = () => {
+    console.log("Attempting login...");
+    if (loginUsername === "" || loginPassword === "") {
+      setError("Username or password is empty");
+      setShowError(true);
+      return;
+    }
+    axios.post(`${url}/login`, {
+      username: loginUsername,
+      password: loginPassword
+    })
+    .then(
+      (res) => {
+        console.log(`Successfully Logged In: ${JSON.stringify(res.data)}`);
+        localStorage.setItem("token", res.data.token);
+        setLoggedIn(true);
+        setUserToken(res.data.token);
+      }
+    )
+    .catch(
+      (err) => {
+        setError(`${err.response.data.error}`);
+        setShowError(true);
+      }
+    )
+  }
+
+  const handleLogout = () => {
+    console.log("Attempting logout...");
+    localStorage.removeItem("token");
+    setUserToken(null);
+  }
+
+  const handleRegister = () => {
+    console.log("Attempting register...");
+    if (loginUsername === "" || loginPassword === "") {
+      setError("Username or password is empty");
+      setShowError(true);
+      return;
+    }
+    axios.post(`${url}/register`, {
+      username: loginUsername,
+      password: loginPassword
+    })
+    .then(
+      (res) => {
+        console.log(`Successfully Registered: ${JSON.stringify(res.data)}`);
+        localStorage.setItem("token", res.data.token);
+        setLoggedIn(true);
+        setUsername(loginUsername);
+      }
+    )
+    .catch(
+      (err) => {
+        setError(`${err.response.data.error}`);
+        setShowError(true);
+      }
+    )
+  }
+
   useEffect(() => {
     if (userToken) {
       axios.get(`${url}/user`, {
@@ -17,6 +83,8 @@ function App() {
       .then(
         (res) => {
           console.log(res.data);
+          setLoggedIn(true);
+          setUsername(res.data.name);
         }
       )
       .catch(
@@ -30,7 +98,11 @@ function App() {
       console.log("no token");
       setLoggedIn(false);
     }
-  }, [userToken])
+  }, [userToken]);
+
+  useEffect(() => {
+    console.log(`loginUsername: ${loginUsername}, loginPassword: ${loginPassword}`);
+  }, [loginUsername, loginPassword]);
 
   return (
     <>
@@ -39,14 +111,18 @@ function App() {
         <div id="logo">
           <h1>chat</h1>
         </div>
+        {showError ? (
         <div id="error">
           <div id="error_text">
-            <p>error:</p>
+            <p>error: {error}</p>
           </div>
           <div>
-            <button id="error_button">clear</button>
+            <button id="error_button" onClick={() => {setShowError(false)}}>clear</button>
           </div>
         </div>
+        ) : (
+          <></>
+        )}
       </div>
       <div id="content">
         <div id="sidebar">
@@ -75,21 +151,21 @@ function App() {
           {loggedIn ? (
             <div id="user_container">
               <div id="username">
-                <h3>username</h3>
+                <h3>{username}</h3>
               </div>
               <div id="logout">
-                <button>logout</button>
+                <button onClick={handleLogout}>logout</button>
               </div>
             </div>
           ) : (
             <div id="login">
               <div id="login_inputs">
-                <input placeholder="username"></input>
-                <input placeholder="password" type="password"></input>
+                <input placeholder="username" onChange={(e) => {setLoginUsername(e.target.value)}}></input>
+                <input placeholder="password" type="password" onChange={(e) => {setLoginPassword(e.target.value)}}></input>
               </div>
               <div id="login_buttons">
-                <button>register</button>
-                <button>login</button>
+                <button onClick={handleRegister}>register</button>
+                <button onClick={handleLogin}>login</button>
               </div>
             </div>
           )}
