@@ -15,6 +15,8 @@ function App() {
   const [chatList, setChatList] = useState([]);
   const [newChatName, setNewChatName] = useState("");
   const [currentChat, setCurrentChat] = useState("");
+  const [chatName, setChatName] = useState("");
+  const [messages, setMessages] = useState([]);
 
   useEffect(() => {
     console.log("New chat name: ", newChatName);
@@ -87,6 +89,7 @@ function App() {
       (res) => {
         console.log(`ChatList: ${JSON.stringify(res.data)}`);
         setChatList(res.data);
+        console.log(chatList);
       }
     )
     .catch(
@@ -128,8 +131,57 @@ function App() {
     )
   }
 
+  const switchChat = (chatId, chatName) => {
+    console.log(`Switching to chat: ${chatId}`);
+    axios.get(`${url}/chats/${chatId}`)
+    .then(
+      (res) => {
+        console.log(`Chat: ${JSON.stringify(res.data)}`);
+        setCurrentChat(chatId);
+        console.log(chatName);
+        setChatName(chatName);
+        axios.get(`${url}/messages/${chatId}`)
+        .then(
+          (res) => {
+            console.log(`Messages: ${JSON.stringify(res.data)}`);
+            setMessages(res.data);
+          }
+        )
+        .catch(
+          (err) => {
+            setError("Unable to get messages");
+            setShowError(true);
+          }
+        )
+      }
+    ).catch(
+      (err) => {
+        setError("Unable to get chat");
+        setShowError(true);
+      }
+    )
+  }
+
   const handleChatDelete = () => {
     console.log("Attempting to delete chat...");
+    axios.delete(`${url}/chats/${currentChat}`, {
+      headers: {
+        "Authorization": `Bearer ${userToken}`
+      }
+    })
+    .then(
+      () => {
+        setCurrentChat(null);
+        setChatName("");
+        getChats();
+      }
+    )
+    .catch(
+      (err) => {
+        setError("Unable to delete chat");
+        setShowError(true);
+      }
+    )
   }
 
   useEffect(() => {
@@ -154,6 +206,7 @@ function App() {
         (err) => {
           console.log(err);
           setLoggedIn(false);
+          setuserToken("");
         }
       )
     }
@@ -202,7 +255,7 @@ function App() {
               {chatList.map((chat) => {
                 return (
                   <div id="chat">
-                    <p>{chat.name}</p>
+                    <p key={chat.id} onClick={() => (console.log("clicked!"))}><a href="" onClick={(e)=>{e.preventDefault();switchChat(chat.id, chat.name)}}>{chat.name}</a></p>
                   </div>
                 )
               }
@@ -232,15 +285,22 @@ function App() {
           )}
         </div>
         <div id="chatbox">
-            <div id="chat_header">
-              <div id="chat_name">
-                <h3>chat header</h3>
-              </div>
-              <div id="chat_options">
-                {/* <p>admin: username</p> */}
-                <button onClick={handleChatDelete}>delete chat</button>
-              </div>
-            </div>
+            {currentChat ? (
+              <>
+                <div id="chat_header">
+                <div id="chat_name">
+                  <h3>{chatName}</h3>
+                </div>
+                <div id="chat_options">
+                  {/* <p>admin: username</p> */}
+                  <button onClick={handleChatDelete}>delete chat</button>
+                </div>
+                </div>
+              </>
+            ) : (
+              <>
+              </>
+            )}
             <div id="chat_window">
               <p><span>user1:</span> hello this is a relatively long message let's see what happens</p>
               <p><span>user1:</span>hello</p>

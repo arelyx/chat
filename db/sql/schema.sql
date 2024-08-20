@@ -16,10 +16,11 @@ CREATE TABLE chats (
     data JSONB
 );
 
--- CREATE TABLE messages (
---     id INTEGER PRIMARY KEY,
---     sender_id INTEGER,
---     receiver_id INTEGER,
---     message TEXT,
---     timestamp DATETIME
--- );
+CREATE TABLE messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    sender_name TEXT REFERENCES users(name),
+    chat_id UUID REFERENCES chats(id),
+    message TEXT,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    data JSONB
+);

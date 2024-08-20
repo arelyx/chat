@@ -194,13 +194,13 @@ html, body {
 }
 
 #chat_header {
-  display: flex;  /* Add this */
-  flex-direction: row;  /* Change this from column to row */
-  justify-content: space-between;  /* This will push chat_name to the left and chat_options to the right */
-  align-items: center;  /* This will vertically center the content */
+  display: flex; 
+  flex-direction: row;  
+  justify-content: space-between; 
+  align-items: center; 
   flex: 0 0 auto;
   border-bottom: 1px solid;
-  padding: 5px;  /* Changed from padding-left to padding for consistency */
+  padding: 5px;
 }
 
 #chat_header h3 {
@@ -208,7 +208,7 @@ html, body {
 }
 
 #chat_name {
-  /* Remove the width constraint if not necessary */
+  
 }
 
 #chat_options {

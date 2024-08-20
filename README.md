@@ -1,6 +1,6 @@
 # chat
 
-unserious chat app
+unserious chat app. scrapped together in a few hours...
 
 
 

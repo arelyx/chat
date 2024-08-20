@@ -130,6 +130,41 @@ app.post("/chats", authenticate, (req, res) => {
     })
 })
 
+app.get("/chats/:chatId", (req, res) => {
+    const chatId = req.params.chatId;
+    pool.query("SELECT * FROM messages WHERE chat_id = $1 ORDER BY timestamp DESC", [chatId], (error, results) => {
+        if (error) {
+            console.log(`Unable to get chat... ${error}`);
+            res.status(500).json({"error": "Error getting chat"});
+        }
+        else {
+            console.log("ChatRequest results: "+ JSON.stringify(results.rows));
+            res.status(200).json(results.rows[0]);
+        }
+    })
+})
+
+app.delete("/chats/:chatId", authenticate, (req, res) => {
+    const chatId = req.params.chatId;
+    pool.query("DELETE FROM messages WHERE chat_id = $1", [chatId], (error, results) => {
+        if (error) {
+            console.log(`Unable to delete chat... ${error}`);
+            res.status(500).json({"error": "Error deleting chat"});
+        }
+        else {
+            pool.query("DELETE FROM chats WHERE id = $1", [chatId], (error, results) => {
+                if (error) {
+                    console.log(`Unable to delete chat... ${error}`);
+                    res.status(500).json({"error": "Error deleting chat"});
+                }
+                else {
+                    res.status(200).json({"message": "Chat deleted"});
+                }
+            })
+        }
+    })
+})
+
 app.listen(3000, () => {
     console.log("Server started on port 3000");
 })
