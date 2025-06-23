@@ -109,7 +109,7 @@ app.get("/user", authenticate, async (req, res) => {
         console.log("UserRequest results: "+ JSON.stringify(result.rows));
         res.status(200).json({
             id: result.rows[0].id,
-            username: result.rows[0].name
+            name: result.rows[0].name
         });
     } catch (error) {
         console.log(`Unable to get user... ${error}`);
@@ -135,7 +135,7 @@ app.post("/register", validateRegistration, async (req, res) => {
             "token": token,
             "user": {
                 id: result.rows[0].id,
-                username: result.rows[0].name
+                name: result.rows[0].name
             }
         });
     } catch (error) {
@@ -170,7 +170,7 @@ app.post("/login", validateLogin, async (req, res) => {
                 "token": token,
                 "user": {
                     id: user.id,
-                    username: user.name
+                    name: user.name
                 }
             });
         } else {
@@ -237,14 +237,13 @@ app.post("/chats", authenticate, validateChatCreation, async (req, res) => {
 app.get("/chats/:chatId", async (req, res) => {
     const chatId = req.params.chatId;
     
-    // Validate chatId
-    if (!chatId || isNaN(parseInt(chatId))) {
+    if (!chatId || typeof chatId !== 'string') {
         return res.status(400).json({"error": "Valid chat ID is required"});
     }
     
     try {
         const result = await pool.query(
-            "SELECT id, content, author, timestamp FROM messages WHERE chat_id = $1 ORDER BY timestamp DESC",
+            "SELECT id, message, sender_name, timestamp FROM messages WHERE chat_id = $1 ORDER BY timestamp DESC",
             [chatId]
         );
         
@@ -259,8 +258,7 @@ app.get("/chats/:chatId", async (req, res) => {
 app.delete("/chats/:chatId", authenticate, async (req, res) => {
     const chatId = req.params.chatId;
     
-    // Validate chatId
-    if (!chatId || isNaN(parseInt(chatId))) {
+    if (!chatId || typeof chatId !== 'string') {
         return res.status(400).json({"error": "Valid chat ID is required"});
     }
     
