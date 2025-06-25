@@ -25,6 +25,18 @@ html, body {
   align-items:center;
 }
 
+#header_controls {
+  display: flex;
+  align-items: center;
+  margin-right: 0px;
+  width: 200px;
+  justify-content: flex-end;
+}
+
+#sidebar_toggle {
+  margin-right: 5px;
+}
+
 #header h1 {
   padding: 0;
   margin: 0;
@@ -61,6 +73,7 @@ html, body {
   flex-direction: column;
   /* background: red; */
   overflow: hidden;
+  border-right: 0px solid;
 }
 
 #chats_container {

@@ -17,6 +17,7 @@ function App() {
   const [currentChat, setCurrentChat] = useState("");
   const [chatName, setChatName] = useState("");
   const [messages, setMessages] = useState([]);
+  const [sidebarVisible, setSidebarVisible] = useState(true);
 
   useEffect(() => {
     console.log("New chat name: ", newChatName);
@@ -184,6 +185,10 @@ function App() {
     )
   }
 
+  const toggleSidebar = () => {
+    setSidebarVisible(!sidebarVisible);
+  }
+
   useEffect(() => {
     getChats();
   }, []);
@@ -227,6 +232,7 @@ function App() {
         <div id="logo">
           <h1>chat</h1>
         </div>
+
         {showError ? (
         <div id="error">
           <div id="error_text">
@@ -239,51 +245,58 @@ function App() {
         ) : (
           <></>
         )}
+        <div id="header_controls">
+          <button id="sidebar_toggle" onClick={toggleSidebar}>
+            {sidebarVisible ? "hide chats" : "show chats"}
+          </button>
+        </div>
       </div>
       <div id="content">
-        <div id="sidebar">
-        <div id="new_chat">
-            <div id="new_chat_input">
-              <input placeholder="chat name" onChange= {(e) => setNewChatName(e.target.value)}></input>
+        {sidebarVisible && (
+          <div id="sidebar">
+          <div id="new_chat">
+              <div id="new_chat_input">
+                <input placeholder="chat name" onChange= {(e) => setNewChatName(e.target.value)}></input>
+              </div>
+              <div id="new_chat_button">
+                <button onClick={handleChatCreate}>create</button>
+              </div>
             </div>
-            <div id="new_chat_button">
-              <button onClick={handleChatCreate}>create</button>
+            <div id="chats_container">
+              <div id="chats">
+                {chatList.map((chat) => {
+                  return (
+                    <div id="chat">
+                      <p key={chat.id} onClick={() => (console.log("clicked!"))}><a href="" onClick={(e)=>{e.preventDefault();switchChat(chat.id, chat.name)}}>{chat.name}</a></p>
+                    </div>
+                  )
+                }
+              )}
+              </div>
             </div>
-          </div>
-          <div id="chats_container">
-            <div id="chats">
-              {chatList.map((chat) => {
-                return (
-                  <div id="chat">
-                    <p key={chat.id} onClick={() => (console.log("clicked!"))}><a href="" onClick={(e)=>{e.preventDefault();switchChat(chat.id, chat.name)}}>{chat.name}</a></p>
-                  </div>
-                )
-              }
+            {loggedIn ? (
+              <div id="user_container">
+                <div id="username">
+                  <h3>{username}</h3>
+                </div>
+                <div id="logout">
+                  <button onClick={handleLogout}>logout</button>
+                </div>
+              </div>
+            ) : (
+              <div id="login">
+                <div id="login_inputs">
+                  <input placeholder="username" onChange={(e) => {setLoginUsername(e.target.value)}}></input>
+                  <input placeholder="password" type="password" onChange={(e) => {setLoginPassword(e.target.value)}}></input>
+                </div>
+                <div id="login_buttons">
+                  <button onClick={handleRegister}>register</button>
+                  <button onClick={handleLogin}>login</button>
+                </div>
+              </div>
             )}
-            </div>
           </div>
-          {loggedIn ? (
-            <div id="user_container">
-              <div id="username">
-                <h3>{username}</h3>
-              </div>
-              <div id="logout">
-                <button onClick={handleLogout}>logout</button>
-              </div>
-            </div>
-          ) : (
-            <div id="login">
-              <div id="login_inputs">
-                <input placeholder="username" onChange={(e) => {setLoginUsername(e.target.value)}}></input>
-                <input placeholder="password" type="password" onChange={(e) => {setLoginPassword(e.target.value)}}></input>
-              </div>
-              <div id="login_buttons">
-                <button onClick={handleRegister}>register</button>
-                <button onClick={handleLogin}>login</button>
-              </div>
-            </div>
-          )}
-        </div>
+        )}
         <div id="chatbox">
             {currentChat ? (
               <>
