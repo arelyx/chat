@@ -144,7 +144,7 @@ function App() {
         setCurrentChat(chatId);
         setChatName(res.data.name);
         setChatOwner(res.data.author);
-        axios.get(`${url}/messages/${chatId}`)
+        axios.get(`${url}/chats/${chatId}/messages`)
         .then(
           (res) => {
             console.log(`Messages: ${JSON.stringify(res.data)}`);
@@ -340,20 +340,15 @@ function App() {
               </>
             )}
             <div id="chat_window">
-              <p><span>user1:</span> hello this is a relatively long message let's see what happens</p>
-              <p><span>user1:</span>hello</p>
-              <p><span>user1:</span>hello</p>
-              <p><span>user1:</span>hello</p>
-              <p><span>user1:</span>hello</p>
-              <p><span>user1:</span>hello</p>
-              <p><span>user1:</span>hello</p>
-              <p><span>user1:</span>hello</p>
-              <p><span>user1:</span>hello</p>
-              <p><span>user1:</span>hello</p>
-              <p><span>user1:</span>hello</p>
-              <p><span>user1:</span>hello</p>
-              <p><span>user1:</span>hello</p>
-              <p><span>user1:</span>hello</p>
+              {currentChat ? (
+                messages.length > 0 ? (
+                  messages.map((msg, idx) => (
+                    <p key={idx}><span>{msg.sender_name}:</span> {msg.message}</p>
+                  ))
+                ) : (
+                  <p>no messages yet...</p>
+                )
+              ) : null}
             </div>
             <div id="chat_input">
               <input type="text" placeholder="send message" />

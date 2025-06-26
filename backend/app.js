@@ -314,6 +314,23 @@ app.get("/users", async (req, res) => {
     }
 });
 
+app.get("/chats/:chatId/messages", async (req, res) => {
+    const chatId = req.params.chatId;
+    if (!chatId || typeof chatId !== 'string') {
+        return res.status(400).json({"error": "Valid chat ID is required"});
+    }
+    try {
+        const result = await pool.query(
+            "SELECT id, chat_id, sender_name, message, timestamp FROM messages WHERE chat_id = $1 ORDER BY timestamp ASC",
+            [chatId]
+        );
+        res.status(200).json(result.rows);
+    } catch (error) {
+        console.log(`Unable to get messages... ${error}`);
+        res.status(500).json({"error": "Error getting messages"});
+    }
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error('Unhandled error:', err);
