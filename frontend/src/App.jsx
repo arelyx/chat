@@ -1,4 +1,4 @@
-import {useState, useEffect} from "react"
+import {useState, useEffect, useRef} from "react"
 import axios from "axios"
 
 import './App.css'
@@ -22,6 +22,16 @@ function App() {
   const [userSidebarVisible, setUserSidebarVisible] = useState(true);
   const [chatOwner, setChatOwner] = useState("");
   const [messageInput, setMessageInput] = useState("");
+  
+  // Add ref for chat window
+  const chatWindowRef = useRef(null);
+
+  // Function to scroll to bottom of chat window
+  const scrollToBottom = () => {
+    if (chatWindowRef.current) {
+      chatWindowRef.current.scrollTop = chatWindowRef.current.scrollHeight;
+    }
+  };
 
   useEffect(() => {
     console.log("New chat name: ", newChatName);
@@ -150,6 +160,8 @@ function App() {
           (res) => {
             console.log(`Messages: ${JSON.stringify(res.data)}`);
             setMessages(res.data);
+            // Scroll to bottom after messages are loaded
+            setTimeout(() => scrollToBottom(), 100);
           }
         )
         .catch(
@@ -226,6 +238,8 @@ function App() {
       axios.get(`${url}/chats/${currentChat}/messages`)
         .then((res) => {
           setMessages(res.data);
+          // Scroll to bottom after new message is added
+          setTimeout(() => scrollToBottom(), 100);
         })
         .catch((err) => {
           setError("Unable to refresh messages");
@@ -274,6 +288,13 @@ function App() {
   useEffect(() => {
     console.log(`loginUsername: ${loginUsername}, loginPassword: ${loginPassword}`);
   }, [loginUsername, loginPassword]);
+
+  // Add useEffect to scroll to bottom whenever messages change
+  useEffect(() => {
+    if (messages.length > 0) {
+      scrollToBottom();
+    }
+  }, [messages]);
 
   return (
     <>
@@ -370,7 +391,7 @@ function App() {
               <>
               </>
             )}
-            <div id="chat_window">
+            <div id="chat_window" ref={chatWindowRef}>
               {currentChat ? (
                 messages.length > 0 ? (
                   messages.map((msg, idx) => (
