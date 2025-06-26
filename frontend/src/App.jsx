@@ -20,6 +20,7 @@ function App() {
   const [sidebarVisible, setSidebarVisible] = useState(true);
   const [userList, setUserList] = useState([]);
   const [userSidebarVisible, setUserSidebarVisible] = useState(true);
+  const [chatOwner, setChatOwner] = useState("");
 
   useEffect(() => {
     console.log("New chat name: ", newChatName);
@@ -141,8 +142,8 @@ function App() {
       (res) => {
         console.log(`Chat: ${JSON.stringify(res.data)}`);
         setCurrentChat(chatId);
-        console.log(chatName);
-        setChatName(chatName);
+        setChatName(res.data.name);
+        setChatOwner(res.data.author);
         axios.get(`${url}/messages/${chatId}`)
         .then(
           (res) => {
@@ -322,13 +323,16 @@ function App() {
             {currentChat ? (
               <>
                 <div id="chat_header">
-                <div id="chat_name">
-                  <h3>{chatName}</h3>
-                </div>
-                <div id="chat_options">
-                  {/* <p>admin: username</p> */}
-                  <button onClick={handleChatDelete}>delete chat</button>
-                </div>
+                  <div id="chat_name">
+                    <h3>{chatName}</h3>
+                  </div>
+                  <div id="chat_options">
+                    {username === chatOwner ? (
+                      <button onClick={handleChatDelete}>delete chat</button>
+                    ) : (
+                      <h4 style={{margin: 0}}>by: {chatOwner}</h4>
+                    )}
+                  </div>
                 </div>
               </>
             ) : (
