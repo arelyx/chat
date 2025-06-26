@@ -1,6 +1,6 @@
 # chat
 
-unserious chat app. scrapped together in a few hours...
+unserious chat app.
 
 
 
@@ -26,4 +26,10 @@ cd db
 docker compose up -d
 ```
 
-no prod env yet.
+
+## todo
+ - add prod environment. dockerized and deployable.
+ - websockets for realtime updates.
+ - typing indicators.
+ - message timestamps.
+ - ui improvements.
