@@ -243,12 +243,15 @@ app.get("/chats/:chatId", async (req, res) => {
     
     try {
         const result = await pool.query(
-            "SELECT id, message, sender_name, timestamp FROM messages WHERE chat_id = $1 ORDER BY timestamp DESC",
+            "SELECT id, name, author, date_created FROM chats WHERE id = $1",
             [chatId]
         );
         
-        console.log("ChatRequest results: "+ JSON.stringify(result.rows));
-        res.status(200).json(result.rows);
+        if (result.rows.length === 0) {
+            return res.status(404).json({"error": "Chat not found"});
+        }
+        
+        res.status(200).json(result.rows[0]);
     } catch (error) {
         console.log(`Unable to get chat... ${error}`);
         res.status(500).json({"error": "Error getting chat"});
