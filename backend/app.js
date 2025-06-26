@@ -331,6 +331,64 @@ app.get("/chats/:chatId/messages", async (req, res) => {
     }
 });
 
+const validateMessage = (req, res, next) => {
+    const { message } = req.body;
+    
+    if (!message) {
+        return res.status(400).json({"error": "Message content is required"});
+    }
+    
+    if (typeof message !== 'string') {
+        return res.status(400).json({"error": "Message must be a string"});
+    }
+    
+    if (message.trim().length === 0) {
+        return res.status(400).json({"error": "Message cannot be empty"});
+    }
+    
+    if (message.length > 1000) {
+        return res.status(400).json({"error": "Message too long (max 1000 characters)"});
+    }
+    
+    next();
+};
+
+app.post("/chats/:chatId/messages", authenticate, validateMessage, async (req, res) => {
+    const chatId = req.params.chatId;
+    const messageContent = req.body.message.trim();
+    const senderName = req.username;
+    
+    if (!chatId || typeof chatId !== 'string') {
+        return res.status(400).json({"error": "Valid chat ID is required"});
+    }
+    
+    try {
+        // First verify the chat exists
+        const chatResult = await pool.query(
+            "SELECT id FROM chats WHERE id = $1",
+            [chatId]
+        );
+        
+        if (chatResult.rows.length === 0) {
+            return res.status(404).json({"error": "Chat not found"});
+        }
+        
+        // Insert the message
+        const result = await pool.query(
+            "INSERT INTO messages (sender_name, chat_id, message) VALUES ($1, $2, $3) RETURNING id, sender_name, message, timestamp",
+            [senderName, chatId, messageContent]
+        );
+        
+        res.status(201).json({
+            "message": "Message sent successfully",
+            "data": result.rows[0]
+        });
+    } catch (error) {
+        console.log(`Unable to send message... ${error}`);
+        res.status(500).json({"error": "Error sending message"});
+    }
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error('Unhandled error:', err);

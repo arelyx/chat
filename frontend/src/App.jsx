@@ -21,6 +21,7 @@ function App() {
   const [userList, setUserList] = useState([]);
   const [userSidebarVisible, setUserSidebarVisible] = useState(true);
   const [chatOwner, setChatOwner] = useState("");
+  const [messageInput, setMessageInput] = useState("");
 
   useEffect(() => {
     console.log("New chat name: ", newChatName);
@@ -207,6 +208,36 @@ function App() {
     )
   }
 
+  const sendMessage = () => {
+    if (!messageInput.trim() || !currentChat) {
+      return;
+    }
+    
+    axios.post(`${url}/chats/${currentChat}/messages`, {
+      message: messageInput.trim()
+    }, {
+      headers: {
+        "Authorization": `Bearer ${userToken}`
+      }
+    })
+    .then(() => {
+      setMessageInput("");
+      // Refresh messages to show the new message
+      axios.get(`${url}/chats/${currentChat}/messages`)
+        .then((res) => {
+          setMessages(res.data);
+        })
+        .catch((err) => {
+          setError("Unable to refresh messages");
+          setShowError(true);
+        });
+    })
+    .catch((err) => {
+      setError("Unable to send message");
+      setShowError(true);
+    });
+  };
+
   useEffect(() => {
     getChats();
     getUsers();
@@ -351,8 +382,18 @@ function App() {
               ) : null}
             </div>
             <div id="chat_input">
-              <input type="text" placeholder="send message" />
-              <button>send</button>
+              <input 
+                type="text" 
+                placeholder="send message" 
+                value={messageInput}
+                onChange={(e) => setMessageInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    sendMessage();
+                  }
+                }}
+              />
+              <button onClick={sendMessage}>send</button>
             </div>
         </div>
         {userSidebarVisible && (
