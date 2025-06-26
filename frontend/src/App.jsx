@@ -18,6 +18,8 @@ function App() {
   const [chatName, setChatName] = useState("");
   const [messages, setMessages] = useState([]);
   const [sidebarVisible, setSidebarVisible] = useState(true);
+  const [userList, setUserList] = useState([]);
+  const [userSidebarVisible, setUserSidebarVisible] = useState(true);
 
   useEffect(() => {
     console.log("New chat name: ", newChatName);
@@ -189,8 +191,24 @@ function App() {
     setSidebarVisible(!sidebarVisible);
   }
 
+  const getUsers = () => {
+    axios.get(`${url}/users`)
+    .then(
+      (res) => {
+        setUserList(res.data);
+      }
+    )
+    .catch(
+      (err) => {
+        setError("Unable to get users");
+        setShowError(true);
+      }
+    )
+  }
+
   useEffect(() => {
     getChats();
+    getUsers();
   }, []);
 
   useEffect(() => {
@@ -248,6 +266,9 @@ function App() {
         <div id="header_controls">
           <button id="sidebar_toggle" onClick={toggleSidebar}>
             {sidebarVisible ? "hide chats" : "show chats"}
+          </button>
+          <button id="user_sidebar_toggle" onClick={() => setUserSidebarVisible(!userSidebarVisible)}>
+            {userSidebarVisible ? "hide users" : "show users"}
           </button>
         </div>
       </div>
@@ -335,6 +356,22 @@ function App() {
               <button>send</button>
             </div>
         </div>
+        {userSidebarVisible && (
+          <div id="users_container">
+            <div id="users_header">
+              <div id="users_text">
+                <h3>users</h3>
+              </div>
+            </div>
+            <div id="users">
+              {userList.map((user, idx) => (
+                <div key={user.name || idx} className="user">
+                  <p>{user.name}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
     </>

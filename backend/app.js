@@ -303,6 +303,17 @@ app.delete("/chats/:chatId", authenticate, async (req, res) => {
     }
 })
 
+// Get all users (public route)
+app.get("/users", async (req, res) => {
+    try {
+        const result = await pool.query("SELECT name FROM users ORDER BY name ASC");
+        res.status(200).json(result.rows);
+    } catch (error) {
+        console.log(`Unable to get users... ${error}`);
+        res.status(500).json({"error": "Error getting users"});
+    }
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error('Unhandled error:', err);

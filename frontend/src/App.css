@@ -37,6 +37,10 @@ html, body {
   margin-right: 5px;
 }
 
+#user_sidebar_toggle {
+  margin-right: 5px;
+}
+
 #header h1 {
   padding: 0;
   margin: 0;
@@ -231,4 +235,52 @@ html, body {
 
 #chat_options p{
   margin:0px;
+}
+
+#users_container {
+  flex: 0 0 120px;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid;
+  background: #fff;
+  overflow: hidden;
+}
+
+#users_header {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  border-bottom: 1px solid;
+  padding-left: 10px;
+  background: #fff;
+}
+
+#users_text {
+  flex: 1 1 auto;
+  /* Match #chat_name */
+}
+
+#users_text h3 {
+  margin: 7px 0px 7px 0px;
+  padding: 0;
+}
+
+#users {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding-left: 10px;
+}
+
+.user {
+  /* Match #chat */
+  padding: 0;
+  margin: 8px 0 8px 0;
+}
+
+.user p {
+  margin: 0;
+  padding: 0;
+  font-size: 1rem;
+  color: #222;
 }
