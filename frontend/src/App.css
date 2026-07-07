@@ -362,6 +362,28 @@ html, body {
 }
 
 .date_header {
-  text-align: center;
-  opacity: 0.7;
+  display: flex;
+  align-items: center;
+  font-size: 0.8em;
+  margin: 8px 5px;
+}
+
+.date_header::before,
+.date_header::after {
+  content: "";
+  flex: 1 1 auto;
+  border-top: 1px solid #000;
+}
+
+.date_header::before {
+  margin-right: 8px;
+}
+
+.date_header::after {
+  margin-left: 8px;
+}
+
+#chat_input .join_button {
+  flex: 1 1 auto;
+  margin-left: 0;
 }

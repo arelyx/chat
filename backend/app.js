@@ -132,6 +132,18 @@ const authenticate = (req, res, next) => {
     }
 }
 
+// like authenticate, but anonymous visitors pass through (req.username = null)
+const authenticateOptional = (req, res, next) => {
+    req.username = null;
+    if (req.headers.authorization) {
+        try {
+            const token = req.headers.authorization.split(" ")[1];
+            req.username = jwt.verify(token, process.env.JWT_SECRET).username;
+        } catch { /* treat as anonymous */ }
+    }
+    next();
+};
+
 const validateChatId = (req, res, next) => {
     if (!UUID_RE.test(req.params.chatId)) {
         return res.status(400).json({"error": "Valid chat ID is required"});
@@ -267,8 +279,8 @@ api.get("/chats", authenticate, async (req, res) => {
     }
 })
 
-// publicly discoverable chats (for the join panel)
-api.get("/chats/discoverable", authenticate, async (req, res) => {
+// publicly discoverable chats (for the join panel); browsable without login
+api.get("/chats/discoverable", authenticateOptional, async (req, res) => {
     try {
         const result = await pool.query(
             `SELECT c.id, c.name, c.author, c.date_created,
@@ -335,8 +347,9 @@ api.post("/chats", authenticate, validateChatCreation, async (req, res) => {
     }
 })
 
-// chat details: members, requester's role, invite code for admins
-api.get("/chats/:chatId", authenticate, validateChatId, async (req, res) => {
+// chat details: members, requester's role, invite code for admins;
+// discoverable chats are viewable without login
+api.get("/chats/:chatId", authenticateOptional, validateChatId, async (req, res) => {
     const chatId = req.params.chatId;
 
     try {
@@ -560,8 +573,8 @@ api.get("/users", async (req, res) => {
     }
 });
 
-// readable by members, or by anyone logged in if the chat is discoverable
-api.get("/chats/:chatId/messages", authenticate, validateChatId, async (req, res) => {
+// readable by members, or by anyone (even logged out) if the chat is discoverable
+api.get("/chats/:chatId/messages", authenticateOptional, validateChatId, async (req, res) => {
     const chatId = req.params.chatId;
 
     try {
