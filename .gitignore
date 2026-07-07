@@ -25,3 +25,4 @@ dist-ssr
 
 tmp_docs
 backend/uploads/
+.env

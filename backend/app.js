@@ -777,6 +777,12 @@ api.delete("/chats/:chatId/messages/:messageId", authenticate, validateChatId, r
     }
 });
 
+// production: serve the built frontend (single page, so only / matters)
+const FRONTEND_DIST = process.env.FRONTEND_DIST || path.join(__dirname, "public");
+if (fs.existsSync(FRONTEND_DIST)) {
+    app.use(express.static(FRONTEND_DIST));
+}
+
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error('Unhandled error:', err);

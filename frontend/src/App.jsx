@@ -37,6 +37,7 @@ function App() {
   const [typingUsers, setTypingUsers] = useState([]);
   const [hasMore, setHasMore] = useState(false);
   const loadingOlder = useRef(false);
+  const scrollAnchor = useRef(null);
   const [emotes, setEmotes] = useState([]);
   const [showEmotes, setShowEmotes] = useState(false);
   const [newEmoteName, setNewEmoteName] = useState("");
@@ -285,18 +286,23 @@ function App() {
     const prevHeight = el.scrollHeight;
     api.get(`/chats/${chatId}/messages`, {params: {before: messages[0].timestamp}})
     .then((res) => {
-      if (currentChatRef.current !== chatId) return;
+      if (currentChatRef.current !== chatId) { loadingOlder.current = false; return; }
+      scrollAnchor.current = { prevHeight };
       setMessages((prev) => [...res.data.messages, ...prev]);
       setHasMore(res.data.has_more);
-      setTimeout(() => {
-        if (chatWindowRef.current) {
-          chatWindowRef.current.scrollTop = chatWindowRef.current.scrollHeight - prevHeight;
-        }
-        loadingOlder.current = false;
-      }, 50);
     })
     .catch(() => { loadingOlder.current = false; });
   };
+
+  // after older messages render, restore the viewport to the message the user was on
+  useEffect(() => {
+    if (scrollAnchor.current && chatWindowRef.current) {
+      const el = chatWindowRef.current;
+      el.scrollTop = el.scrollHeight - scrollAnchor.current.prevHeight;
+      scrollAnchor.current = null;
+      loadingOlder.current = false;
+    }
+  }, [messages]);
 
   const handleChatScroll = () => {
     const el = chatWindowRef.current;
