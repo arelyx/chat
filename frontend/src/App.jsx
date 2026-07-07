@@ -35,6 +35,8 @@ function App() {
   const [addMemberInput, setAddMemberInput] = useState("");
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [typingUsers, setTypingUsers] = useState([]);
+  const [hasMore, setHasMore] = useState(false);
+  const loadingOlder = useRef(false);
 
   const chatWindowRef = useRef(null);
   const wsRef = useRef(null);
@@ -136,7 +138,8 @@ function App() {
       setTypingUsers([]);
       api.get(`/chats/${chatId}/messages`)
       .then((res) => {
-        setMessages(res.data);
+        setMessages(res.data.messages);
+        setHasMore(res.data.has_more);
         setTimeout(() => scrollToBottom(), 100);
       })
       .catch((err) => showErr(err, "Unable to get messages"));
@@ -252,7 +255,40 @@ function App() {
   // dedup by id: a message can arrive via both POST response and websocket
   const appendMessage = (msg) => {
     setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]);
-    setTimeout(() => scrollToBottom(), 100);
+    // only autoscroll if the user is near the bottom
+    const el = chatWindowRef.current;
+    if (el && el.scrollHeight - el.scrollTop - el.clientHeight < 150) {
+      setTimeout(() => scrollToBottom(), 100);
+    }
+  };
+
+  // load older messages when scrolled to the top, preserving scroll position
+  const loadOlderMessages = () => {
+    const el = chatWindowRef.current;
+    if (!el || loadingOlder.current || !hasMore || messages.length === 0) return;
+    loadingOlder.current = true;
+    const chatId = currentChatRef.current;
+    const prevHeight = el.scrollHeight;
+    api.get(`/chats/${chatId}/messages`, {params: {before: messages[0].timestamp}})
+    .then((res) => {
+      if (currentChatRef.current !== chatId) return;
+      setMessages((prev) => [...res.data.messages, ...prev]);
+      setHasMore(res.data.has_more);
+      setTimeout(() => {
+        if (chatWindowRef.current) {
+          chatWindowRef.current.scrollTop = chatWindowRef.current.scrollHeight - prevHeight;
+        }
+        loadingOlder.current = false;
+      }, 50);
+    })
+    .catch(() => { loadingOlder.current = false; });
+  };
+
+  const handleChatScroll = () => {
+    const el = chatWindowRef.current;
+    if (el && el.scrollTop < 40) {
+      loadOlderMessages();
+    }
   };
 
   const sendTyping = () => {
@@ -384,11 +420,6 @@ function App() {
     }
   }, [userToken]);
 
-  useEffect(() => {
-    if (messages.length > 0) {
-      scrollToBottom();
-    }
-  }, [messages]);
 
   const isAdmin = chatInfo?.role === "admin";
   const isMember = chatInfo?.role != null;
@@ -550,7 +581,10 @@ function App() {
               <>
               </>
             )}
-            <div id="chat_window" ref={chatWindowRef}>
+            <div id="chat_window" ref={chatWindowRef} onScroll={handleChatScroll}>
+              {currentChat && hasMore ? (
+                <p><a href="" onClick={(e)=>{e.preventDefault();loadOlderMessages()}}>[load older messages]</a></p>
+              ) : null}
               {currentChat ? (
                 messages.length > 0 ? (
                   messages.map((msg) => (
