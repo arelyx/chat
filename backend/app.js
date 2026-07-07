@@ -521,11 +521,24 @@ api.get("/chats/:chatId/messages", authenticate, validateChatId, async (req, res
             return res.status(403).json({"error": "Not a member of this chat"});
         }
 
+        // newest page first; 'before' cursor pages backwards through history
+        const limit = Math.min(parseInt(req.query.limit, 10) || 50, 100);
+        const before = req.query.before || null;
+        if (before && isNaN(Date.parse(before))) {
+            return res.status(400).json({"error": "Invalid 'before' cursor"});
+        }
+
         const result = await pool.query(
-            "SELECT id, chat_id, sender_name, message, timestamp FROM messages WHERE chat_id = $1 ORDER BY timestamp ASC",
-            [chatId]
+            `SELECT id, chat_id, sender_name, message, timestamp FROM messages
+             WHERE chat_id = $1 AND ($2::timestamp IS NULL OR timestamp < $2)
+             ORDER BY timestamp DESC LIMIT $3`,
+            [chatId, before, limit]
         );
-        res.status(200).json(result.rows);
+
+        res.status(200).json({
+            messages: result.rows.reverse(),
+            has_more: result.rows.length === limit
+        });
     } catch (error) {
         console.log(`Unable to get messages... ${error}`);
         res.status(500).json({"error": "Error getting messages"});
