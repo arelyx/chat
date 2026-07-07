@@ -511,35 +511,6 @@ api.post("/chats/:chatId/leave", authenticate, validateChatId, async (req, res) 
     }
 })
 
-// admin: add a user to the chat
-api.post("/chats/:chatId/members", authenticate, validateChatId, requireAdmin, async (req, res) => {
-    const { username } = req.body;
-
-    if (!username || typeof username !== 'string') {
-        return res.status(400).json({"error": "Username is required"});
-    }
-
-    try {
-        const userResult = await pool.query("SELECT name FROM users WHERE name = $1", [username]);
-        if (userResult.rows.length === 0) {
-            return res.status(404).json({"error": "User not found"});
-        }
-
-        await pool.query(
-            "INSERT INTO chat_members (chat_id, user_name) VALUES ($1, $2) ON CONFLICT DO NOTHING",
-            [req.params.chatId, username]
-        );
-
-        ws.broadcastToChat(req.params.chatId, { type: "chat:members", chatId: req.params.chatId });
-        ws.broadcastToUser(username, { type: "chat:joined", chatId: req.params.chatId });
-
-        res.status(200).json({"message": "User added to chat"});
-    } catch (error) {
-        console.log(`Unable to add member... ${error}`);
-        res.status(500).json({"error": "Error adding member"});
-    }
-})
-
 // admin: remove a user from the chat (admins cannot be removed)
 api.delete("/chats/:chatId/members/:username", authenticate, validateChatId, requireAdmin, async (req, res) => {
     try {
