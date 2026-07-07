@@ -2,9 +2,11 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const crypto = require("crypto");
+const http = require("http");
 const {Pool} = require("pg");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
+const ws = require("./ws");
 
 if (!process.env.JWT_SECRET) {
     throw new Error('JWT_SECRET environment variable is required');
@@ -354,6 +356,7 @@ api.patch("/chats/:chatId", authenticate, validateChatId, requireAdmin, async (r
 
 api.delete("/chats/:chatId", authenticate, validateChatId, requireAdmin, async (req, res) => {
     try {
+        await ws.broadcastToChat(req.params.chatId, { type: "chat:deleted", chatId: req.params.chatId });
         await pool.query("DELETE FROM chats WHERE id = $1", [req.params.chatId]);
         res.status(200).json({"message": "Chat deleted successfully"});
     } catch (error) {
@@ -383,6 +386,8 @@ api.post("/chats/join", authenticate, async (req, res) => {
             [chat.id, req.username]
         );
 
+        ws.broadcastToChat(chat.id, { type: "chat:members", chatId: chat.id });
+
         res.status(200).json({"message": "Joined chat successfully", "chat": {id: chat.id, name: chat.name}});
     } catch (error) {
         console.log(`Unable to join chat... ${error}`);
@@ -410,6 +415,8 @@ api.post("/chats/:chatId/join", authenticate, validateChatId, async (req, res) =
             [chatId, req.username]
         );
 
+        ws.broadcastToChat(chatId, { type: "chat:members", chatId });
+
         res.status(200).json({"message": "Joined chat successfully"});
     } catch (error) {
         console.log(`Unable to join chat... ${error}`);
@@ -427,6 +434,8 @@ api.post("/chats/:chatId/leave", authenticate, validateChatId, async (req, res) 
         if (result.rows.length === 0) {
             return res.status(404).json({"error": "Not a member of this chat"});
         }
+
+        ws.broadcastToChat(req.params.chatId, { type: "chat:members", chatId: req.params.chatId });
 
         res.status(200).json({"message": "Left chat successfully"});
     } catch (error) {
@@ -454,6 +463,9 @@ api.post("/chats/:chatId/members", authenticate, validateChatId, requireAdmin, a
             [req.params.chatId, username]
         );
 
+        ws.broadcastToChat(req.params.chatId, { type: "chat:members", chatId: req.params.chatId });
+        ws.broadcastToUser(username, { type: "chat:joined", chatId: req.params.chatId });
+
         res.status(200).json({"message": "User added to chat"});
     } catch (error) {
         console.log(`Unable to add member... ${error}`);
@@ -472,6 +484,9 @@ api.delete("/chats/:chatId/members/:username", authenticate, validateChatId, req
         if (result.rows.length === 0) {
             return res.status(404).json({"error": "Member not found (admins cannot be removed)"});
         }
+
+        ws.broadcastToChat(req.params.chatId, { type: "chat:members", chatId: req.params.chatId });
+        ws.broadcastToUser(req.params.username, { type: "kicked", chatId: req.params.chatId });
 
         res.status(200).json({"message": "User removed from chat"});
     } catch (error) {
@@ -556,6 +571,8 @@ api.post("/chats/:chatId/messages", authenticate, validateChatId, validateMessag
             [senderName, chatId, messageContent]
         );
 
+        ws.broadcastToChat(chatId, { type: "message:new", chatId, message: {...result.rows[0], chat_id: chatId} });
+
         res.status(201).json({
             "message": "Message sent successfully",
             "data": result.rows[0]
@@ -582,6 +599,8 @@ api.delete("/chats/:chatId/messages/:messageId", authenticate, validateChatId, r
             return res.status(404).json({"error": "Message not found"});
         }
 
+        ws.broadcastToChat(req.params.chatId, { type: "message:deleted", chatId: req.params.chatId, messageId: req.params.messageId });
+
         res.status(200).json({"message": "Message deleted successfully"});
     } catch (error) {
         console.log(`Unable to delete message... ${error}`);
@@ -602,7 +621,10 @@ app.use((req, res) => {
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
+const server = http.createServer(app);
+ws.init(server, pool);
+
+server.listen(PORT, () => {
     console.log(`Server started on port ${PORT}`);
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 })

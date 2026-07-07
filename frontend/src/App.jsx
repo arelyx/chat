@@ -33,8 +33,15 @@ function App() {
   const [userSidebarVisible, setUserSidebarVisible] = useState(true);
   const [messageInput, setMessageInput] = useState("");
   const [addMemberInput, setAddMemberInput] = useState("");
+  const [onlineUsers, setOnlineUsers] = useState([]);
+  const [typingUsers, setTypingUsers] = useState([]);
 
   const chatWindowRef = useRef(null);
+  const wsRef = useRef(null);
+  const currentChatRef = useRef("");
+  const usernameRef = useRef("");
+  const lastTypingSent = useRef(0);
+  const typingTimeouts = useRef({});
 
   const scrollToBottom = () => {
     if (chatWindowRef.current) {
@@ -66,10 +73,9 @@ function App() {
     localStorage.removeItem("token");
     setUserToken(null);
     setUsername("");
+    usernameRef.current = "";
     setChatList([]);
-    setCurrentChat("");
-    setChatInfo(null);
-    setMessages([]);
+    closeChat();
   }
 
   const handleRegister = () => {
@@ -125,7 +131,9 @@ function App() {
     api.get(`/chats/${chatId}`)
     .then((res) => {
       setCurrentChat(chatId);
+      currentChatRef.current = chatId;
       setChatInfo(res.data);
+      setTypingUsers([]);
       api.get(`/chats/${chatId}/messages`)
       .then((res) => {
         setMessages(res.data);
@@ -136,16 +144,29 @@ function App() {
     .catch((err) => showErr(err, "Unable to get chat"));
   }
 
+  // refresh chat info (role, members) without reloading messages
+  const refreshChatInfo = (chatId) => {
+    api.get(`/chats/${chatId}`)
+    .then((res) => setChatInfo(res.data))
+    .catch(() => {});
+  }
+
   const refreshChat = () => {
-    if (currentChat) switchChat(currentChat);
+    if (currentChat) refreshChatInfo(currentChat);
+  }
+
+  const closeChat = () => {
+    setCurrentChat("");
+    currentChatRef.current = "";
+    setChatInfo(null);
+    setMessages([]);
+    setTypingUsers([]);
   }
 
   const handleChatDelete = () => {
     api.delete(`/chats/${currentChat}`)
     .then(() => {
-      setCurrentChat("");
-      setChatInfo(null);
-      setMessages([]);
+      closeChat();
       getChats();
     })
     .catch((err) => showErr(err, "Unable to delete chat"));
@@ -154,9 +175,7 @@ function App() {
   const handleLeave = () => {
     api.post(`/chats/${currentChat}/leave`)
     .then(() => {
-      setCurrentChat("");
-      setChatInfo(null);
-      setMessages([]);
+      closeChat();
       getChats();
     })
     .catch((err) => showErr(err, "Unable to leave chat"));
@@ -223,21 +242,127 @@ function App() {
       return;
     }
     api.post(`/chats/${currentChat}/messages`, {message: messageInput.trim()})
-    .then(() => {
+    .then((res) => {
       setMessageInput("");
-      api.get(`/chats/${currentChat}/messages`)
-      .then((res) => {
-        setMessages(res.data);
-        setTimeout(() => scrollToBottom(), 100);
-      })
-      .catch(() => {});
+      appendMessage(res.data.data);
     })
     .catch((err) => showErr(err, "Unable to send message"));
   };
 
+  // dedup by id: a message can arrive via both POST response and websocket
+  const appendMessage = (msg) => {
+    setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]);
+    setTimeout(() => scrollToBottom(), 100);
+  };
+
+  const sendTyping = () => {
+    const socket = wsRef.current;
+    const now = Date.now();
+    if (socket?.readyState === WebSocket.OPEN && currentChatRef.current && now - lastTypingSent.current > 2000) {
+      lastTypingSent.current = now;
+      socket.send(JSON.stringify({type: "typing", chatId: currentChatRef.current}));
+    }
+  };
+
+  const handleWsEvent = (event) => {
+    switch (event.type) {
+      case "presence:init":
+        setOnlineUsers(event.online);
+        break;
+      case "presence":
+        setOnlineUsers((prev) => event.online ? [...new Set([...prev, event.username])] : prev.filter((u) => u !== event.username));
+        break;
+      case "message:new":
+        if (event.chatId === currentChatRef.current) {
+          appendMessage(event.message);
+          setTypingUsers((prev) => prev.filter((u) => u !== event.message.sender_name));
+        }
+        break;
+      case "message:deleted":
+        if (event.chatId === currentChatRef.current) {
+          setMessages((prev) => prev.filter((m) => m.id !== event.messageId));
+        }
+        break;
+      case "typing":
+        if (event.chatId === currentChatRef.current && event.username !== usernameRef.current) {
+          setTypingUsers((prev) => prev.includes(event.username) ? prev : [...prev, event.username]);
+          clearTimeout(typingTimeouts.current[event.username]);
+          typingTimeouts.current[event.username] = setTimeout(() => {
+            setTypingUsers((prev) => prev.filter((u) => u !== event.username));
+          }, 3000);
+        }
+        break;
+      case "chat:members":
+        if (event.chatId === currentChatRef.current) {
+          refreshChatInfo(event.chatId);
+        }
+        break;
+      case "chat:joined":
+        getChats();
+        break;
+      case "kicked":
+        getChats();
+        if (event.chatId === currentChatRef.current) {
+          closeChat();
+          setError("you were removed from the chat");
+          setShowError(true);
+        }
+        break;
+      case "chat:deleted":
+        getChats();
+        if (event.chatId === currentChatRef.current) {
+          closeChat();
+        }
+        break;
+      default:
+        break;
+    }
+  };
+
+  const wsHandlerRef = useRef(handleWsEvent);
+  useEffect(() => {
+    wsHandlerRef.current = handleWsEvent;
+  });
+
+  useEffect(() => {
+    if (!userToken) return;
+    let socket;
+    let retryTimer;
+    let closed = false;
+
+    const connect = () => {
+      const proto = window.location.protocol === "https:" ? "wss" : "ws";
+      socket = new WebSocket(`${proto}://${window.location.host}/api/ws?token=${userToken}`);
+      wsRef.current = socket;
+      socket.onmessage = (e) => {
+        try {
+          wsHandlerRef.current(JSON.parse(e.data));
+        } catch { /* ignore malformed events */ }
+      };
+      socket.onclose = () => {
+        setOnlineUsers([]);
+        if (!closed) {
+          retryTimer = setTimeout(connect, 2000);
+        }
+      };
+    };
+
+    connect();
+    return () => {
+      closed = true;
+      clearTimeout(retryTimer);
+      wsRef.current = null;
+      socket?.close();
+    };
+  }, [userToken]);
+
   useEffect(() => {
     getUsers();
   }, []);
+
+  useEffect(() => {
+    usernameRef.current = username;
+  }, [username]);
 
   useEffect(() => {
     if (userToken) {
@@ -444,6 +569,11 @@ function App() {
                 )
               ) : null}
             </div>
+            {currentChat && typingUsers.length > 0 ? (
+              <div id="typing">
+                <p>{typingUsers.join(", ")} {typingUsers.length === 1 ? "is" : "are"} typing...</p>
+              </div>
+            ) : null}
             {currentChat && chatInfo ? (
               isMember ? (
                 <div id="chat_input">
@@ -451,7 +581,7 @@ function App() {
                     type="text"
                     placeholder="send message"
                     value={messageInput}
-                    onChange={(e) => setMessageInput(e.target.value)}
+                    onChange={(e) => {setMessageInput(e.target.value); sendTyping();}}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         sendMessage();
@@ -479,7 +609,8 @@ function App() {
                 chatInfo.members.map((member) => (
                   <div key={member.user_name} className="user">
                     <p>
-                      {member.user_name}
+                      <span className={onlineUsers.includes(member.user_name) ? "online" : "offline"}>●</span>
+                      {" "}{member.user_name}
                       {member.role === "admin" ? <span> *</span> : null}
                       {isAdmin && member.role !== "admin" ? (
                         <>
@@ -493,7 +624,10 @@ function App() {
               ) : (
                 userList.map((user, idx) => (
                   <div key={user.name || idx} className="user">
-                    <p>{user.name}</p>
+                    <p>
+                      <span className={onlineUsers.includes(user.name) ? "online" : "offline"}>●</span>
+                      {" "}{user.name}
+                    </p>
                   </div>
                 ))
               )}
