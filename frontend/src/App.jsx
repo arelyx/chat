@@ -37,6 +37,11 @@ function App() {
   const [typingUsers, setTypingUsers] = useState([]);
   const [hasMore, setHasMore] = useState(false);
   const loadingOlder = useRef(false);
+  const [emotes, setEmotes] = useState([]);
+  const [showEmotes, setShowEmotes] = useState(false);
+  const [newEmoteName, setNewEmoteName] = useState("");
+  const fileInputRef = useRef(null);
+  const emoteFileRef = useRef(null);
 
   const chatWindowRef = useRef(null);
   const wsRef = useRef(null);
@@ -136,6 +141,7 @@ function App() {
       currentChatRef.current = chatId;
       setChatInfo(res.data);
       setTypingUsers([]);
+      getEmotes(chatId);
       api.get(`/chats/${chatId}/messages`)
       .then((res) => {
         setMessages(res.data.messages);
@@ -164,6 +170,14 @@ function App() {
     setChatInfo(null);
     setMessages([]);
     setTypingUsers([]);
+    setEmotes([]);
+    setShowEmotes(false);
+  }
+
+  const getEmotes = (chatId) => {
+    api.get(`/chats/${chatId}/emotes`)
+    .then((res) => setEmotes(res.data))
+    .catch(() => setEmotes([]));
   }
 
   const handleChatDelete = () => {
@@ -291,6 +305,69 @@ function App() {
     }
   };
 
+  const sendImage = (file) => {
+    if (!file || !currentChat) return;
+    if (!file.type.startsWith("image/")) {
+      setError("only image files can be uploaded");
+      setShowError(true);
+      return;
+    }
+    if (file.size >= 1024 * 1024) {
+      setError("image too large (max 1MB)");
+      setShowError(true);
+      return;
+    }
+    const form = new FormData();
+    form.append("file", file);
+    api.post(`/chats/${currentChat}/images`, form)
+    .then((res) => appendMessage(res.data.data))
+    .catch((err) => showErr(err, "Unable to send image"));
+  };
+
+  const handleAddEmote = (file) => {
+    if (!file || !currentChat) return;
+    if (!newEmoteName.trim()) {
+      setError("emote name is empty");
+      setShowError(true);
+      return;
+    }
+    if (file.size >= 1024 * 1024) {
+      setError("image too large (max 1MB)");
+      setShowError(true);
+      return;
+    }
+    const form = new FormData();
+    form.append("name", newEmoteName.trim());
+    form.append("file", file);
+    api.post(`/chats/${currentChat}/emotes`, form)
+    .then(() => {
+      setNewEmoteName("");
+      getEmotes(currentChat);
+    })
+    .catch((err) => showErr(err, "Unable to add emote"));
+  };
+
+  const handleDeleteEmote = (name) => {
+    api.delete(`/chats/${currentChat}/emotes/${name}`)
+    .then(() => getEmotes(currentChat))
+    .catch((err) => showErr(err, "Unable to delete emote"));
+  };
+
+  // message text with :name: tokens swapped for emote images
+  const renderMessageText = (text) => {
+    if (!text) return text;
+    const parts = text.split(/(:[a-zA-Z0-9_]+:)/g);
+    if (parts.length === 1) return text;
+    const emoteMap = Object.fromEntries(emotes.map((e) => [e.name, e.url]));
+    return parts.map((part, i) => {
+      const match = part.match(/^:([a-zA-Z0-9_]+):$/);
+      if (match && emoteMap[match[1]]) {
+        return <img key={i} className="emote" src={emoteMap[match[1]]} alt={part} title={part} />;
+      }
+      return part;
+    });
+  };
+
   const sendTyping = () => {
     const socket = wsRef.current;
     const now = Date.now();
@@ -331,6 +408,11 @@ function App() {
       case "chat:members":
         if (event.chatId === currentChatRef.current) {
           refreshChatInfo(event.chatId);
+        }
+        break;
+      case "emotes":
+        if (event.chatId === currentChatRef.current) {
+          getEmotes(event.chatId);
         }
         break;
       case "chat:joined":
@@ -589,7 +671,12 @@ function App() {
                 messages.length > 0 ? (
                   messages.map((msg) => (
                     <p key={msg.id}>
-                      <span><b>{msg.sender_name}:</b></span> {msg.message}
+                      <span><b>{msg.sender_name}:</b></span>{" "}
+                      {msg.data?.image ? (
+                        <img className="chat_image" src={msg.data.image} alt="uploaded image" />
+                      ) : (
+                        renderMessageText(msg.message)
+                      )}
                       {isAdmin ? (
                         <>
                           {" "}
@@ -608,6 +695,31 @@ function App() {
                 <p>{typingUsers.join(", ")} {typingUsers.length === 1 ? "is" : "are"} typing...</p>
               </div>
             ) : null}
+            {currentChat && chatInfo && showEmotes ? (
+              <div id="emote_picker">
+                {emotes.length === 0 ? (
+                  <span>no emotes yet...</span>
+                ) : (
+                  emotes.map((emote) => (
+                    <span key={emote.name} className="emote_entry">
+                      <img className="emote" src={emote.url} alt={`:${emote.name}:`} title={`:${emote.name}:`}
+                        onClick={() => setMessageInput((prev) => `${prev}:${emote.name}: `)} />
+                      {isAdmin ? (
+                        <a href="" onClick={(e)=>{e.preventDefault();handleDeleteEmote(emote.name)}}>[x]</a>
+                      ) : null}
+                    </span>
+                  ))
+                )}
+                {isAdmin ? (
+                  <span className="emote_add">
+                    <input placeholder="emote name" value={newEmoteName} onChange={(e) => setNewEmoteName(e.target.value)} />
+                    <button onClick={() => emoteFileRef.current?.click()}>upload emote</button>
+                    <input type="file" accept="image/png,image/jpeg,image/gif,image/webp" style={{display: "none"}} ref={emoteFileRef}
+                      onChange={(e) => {handleAddEmote(e.target.files[0]); e.target.value = "";}} />
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
             {currentChat && chatInfo ? (
               isMember ? (
                 <div id="chat_input">
@@ -623,6 +735,10 @@ function App() {
                     }}
                   />
                   <button onClick={sendMessage}>send</button>
+                  <button onClick={() => fileInputRef.current?.click()}>img</button>
+                  <button onClick={() => setShowEmotes(!showEmotes)}>emotes</button>
+                  <input type="file" accept="image/png,image/jpeg,image/gif,image/webp" style={{display: "none"}} ref={fileInputRef}
+                    onChange={(e) => {sendImage(e.target.files[0]); e.target.value = "";}} />
                 </div>
               ) : (
                 <div id="chat_input">

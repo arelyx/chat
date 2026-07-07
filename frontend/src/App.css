@@ -334,3 +334,39 @@ html, body {
   margin: 2px 0;
   color: #555;
 }
+
+.chat_image {
+  display: block;
+  max-width: 300px;
+  max-height: 300px;
+  border: 1px solid;
+  margin: 3px 0;
+}
+
+.emote {
+  height: 24px;
+  vertical-align: middle;
+}
+
+#emote_picker {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  border-top: 1px solid;
+}
+
+#emote_picker .emote {
+  height: 28px;
+  cursor: pointer;
+}
+
+.emote_add input {
+  margin-right: 5px;
+}
+
+#chat_input button {
+  margin-left: 5px;
+}

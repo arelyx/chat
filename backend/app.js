@@ -3,6 +3,9 @@ const express = require("express");
 const cors = require("cors");
 const crypto = require("crypto");
 const http = require("http");
+const fs = require("fs");
+const path = require("path");
+const multer = require("multer");
 const {Pool} = require("pg");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
@@ -31,6 +34,43 @@ app.use(express.json());
 app.use("/api", api);
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// uploaded images/emotes live on disk; 1MB cap enforced here (frontend pre-checks too)
+const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(__dirname, "uploads");
+fs.mkdirSync(path.join(UPLOADS_DIR, "images"), { recursive: true });
+fs.mkdirSync(path.join(UPLOADS_DIR, "emotes"), { recursive: true });
+
+const IMAGE_EXTS = { "image/png": ".png", "image/jpeg": ".jpg", "image/gif": ".gif", "image/webp": ".webp" };
+
+const makeUpload = (subdir) => multer({
+    storage: multer.diskStorage({
+        destination: path.join(UPLOADS_DIR, subdir),
+        filename: (req, file, cb) => cb(null, crypto.randomUUID() + IMAGE_EXTS[file.mimetype]),
+    }),
+    limits: { fileSize: 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        if (!IMAGE_EXTS[file.mimetype]) {
+            return cb(new Error("Only png, jpeg, gif, webp images are allowed"));
+        }
+        cb(null, true);
+    },
+});
+
+const imageUpload = makeUpload("images");
+const emoteUpload = makeUpload("emotes");
+
+// wraps a multer middleware to return clean 4xx errors (incl. the 1MB limit)
+const handleUpload = (upload) => (req, res, next) => {
+    upload.single("file")(req, res, (err) => {
+        if (err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE") {
+            return res.status(413).json({"error": "Image too large (max 1MB)"});
+        }
+        if (err) {
+            return res.status(400).json({"error": err.message});
+        }
+        next();
+    });
+};
 
 const validateRegistration = (req, res, next) => {
     const { username, password } = req.body;
@@ -128,6 +168,8 @@ const newInviteCode = () => crypto.randomBytes(6).toString("base64url");
 api.get("/", (req, res) => {
     res.send("Hello world!");
 })
+
+api.use("/uploads", express.static(UPLOADS_DIR, { maxAge: "365d", immutable: true }));
 
 api.get("/user", authenticate, async (req, res) => {
     try {
@@ -529,7 +571,7 @@ api.get("/chats/:chatId/messages", authenticate, validateChatId, async (req, res
         }
 
         const result = await pool.query(
-            `SELECT id, chat_id, sender_name, message, timestamp FROM messages
+            `SELECT id, chat_id, sender_name, message, timestamp, data FROM messages
              WHERE chat_id = $1 AND ($2::timestamp IS NULL OR timestamp < $2)
              ORDER BY timestamp DESC LIMIT $3`,
             [chatId, before, limit]
@@ -580,7 +622,7 @@ api.post("/chats/:chatId/messages", authenticate, validateChatId, validateMessag
         }
 
         const result = await pool.query(
-            "INSERT INTO messages (sender_name, chat_id, message) VALUES ($1, $2, $3) RETURNING id, sender_name, message, timestamp",
+            "INSERT INTO messages (sender_name, chat_id, message) VALUES ($1, $2, $3) RETURNING id, sender_name, message, timestamp, data",
             [senderName, chatId, messageContent]
         );
 
@@ -593,6 +635,120 @@ api.post("/chats/:chatId/messages", authenticate, validateChatId, validateMessag
     } catch (error) {
         console.log(`Unable to send message... ${error}`);
         res.status(500).json({"error": "Error sending message"});
+    }
+});
+
+// members only: send an image as a message
+api.post("/chats/:chatId/images", authenticate, validateChatId, handleUpload(imageUpload), async (req, res) => {
+    const chatId = req.params.chatId;
+
+    if (!req.file) {
+        return res.status(400).json({"error": "Image file is required"});
+    }
+
+    const removeFile = () => fs.unlink(req.file.path, () => {});
+
+    try {
+        const role = await getRole(chatId, req.username);
+        if (!role) {
+            removeFile();
+            return res.status(403).json({"error": "Join the chat to send messages"});
+        }
+
+        const data = { image: `/api/uploads/images/${req.file.filename}` };
+        const result = await pool.query(
+            "INSERT INTO messages (sender_name, chat_id, message, data) VALUES ($1, $2, '', $3) RETURNING id, sender_name, message, timestamp, data",
+            [req.username, chatId, data]
+        );
+
+        ws.broadcastToChat(chatId, { type: "message:new", chatId, message: {...result.rows[0], chat_id: chatId} });
+
+        res.status(201).json({
+            "message": "Image sent successfully",
+            "data": result.rows[0]
+        });
+    } catch (error) {
+        removeFile();
+        console.log(`Unable to send image... ${error}`);
+        res.status(500).json({"error": "Error sending image"});
+    }
+});
+
+// emotes: usable by members, readable like messages, managed by admins
+api.get("/chats/:chatId/emotes", authenticate, validateChatId, async (req, res) => {
+    try {
+        const chatResult = await pool.query("SELECT discoverable FROM chats WHERE id = $1", [req.params.chatId]);
+        if (chatResult.rows.length === 0) {
+            return res.status(404).json({"error": "Chat not found"});
+        }
+
+        const role = await getRole(req.params.chatId, req.username);
+        if (!role && !chatResult.rows[0].discoverable) {
+            return res.status(403).json({"error": "Not a member of this chat"});
+        }
+
+        const result = await pool.query(
+            "SELECT name, file FROM emotes WHERE chat_id = $1 ORDER BY name ASC",
+            [req.params.chatId]
+        );
+        res.status(200).json(result.rows.map((row) => ({name: row.name, url: `/api/uploads/emotes/${row.file}`})));
+    } catch (error) {
+        console.log(`Unable to get emotes... ${error}`);
+        res.status(500).json({"error": "Error getting emotes"});
+    }
+});
+
+api.post("/chats/:chatId/emotes", authenticate, validateChatId, requireAdmin, handleUpload(emoteUpload), async (req, res) => {
+    const name = (req.body.name || "").trim();
+
+    if (!req.file) {
+        return res.status(400).json({"error": "Emote image is required"});
+    }
+
+    const removeFile = () => fs.unlink(req.file.path, () => {});
+
+    if (!/^[a-zA-Z0-9_]{1,32}$/.test(name)) {
+        removeFile();
+        return res.status(400).json({"error": "Emote name must be 1-32 letters, numbers, or underscores"});
+    }
+
+    try {
+        await pool.query(
+            "INSERT INTO emotes (chat_id, name, file) VALUES ($1, $2, $3)",
+            [req.params.chatId, name, req.file.filename]
+        );
+
+        ws.broadcastToChat(req.params.chatId, { type: "emotes", chatId: req.params.chatId });
+
+        res.status(201).json({"message": "Emote added successfully", "emote": {name, url: `/api/uploads/emotes/${req.file.filename}`}});
+    } catch (error) {
+        removeFile();
+        console.log(`Unable to add emote... ${error}`);
+        if (error.code === '23505') {
+            return res.status(409).json({"error": "Emote name already taken in this chat"});
+        }
+        res.status(500).json({"error": "Error adding emote"});
+    }
+});
+
+api.delete("/chats/:chatId/emotes/:name", authenticate, validateChatId, requireAdmin, async (req, res) => {
+    try {
+        const result = await pool.query(
+            "DELETE FROM emotes WHERE chat_id = $1 AND name = $2 RETURNING file",
+            [req.params.chatId, req.params.name]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({"error": "Emote not found"});
+        }
+
+        fs.unlink(path.join(UPLOADS_DIR, "emotes", result.rows[0].file), () => {});
+        ws.broadcastToChat(req.params.chatId, { type: "emotes", chatId: req.params.chatId });
+
+        res.status(200).json({"message": "Emote deleted successfully"});
+    } catch (error) {
+        console.log(`Unable to delete emote... ${error}`);
+        res.status(500).json({"error": "Error deleting emote"});
     }
 });
 
