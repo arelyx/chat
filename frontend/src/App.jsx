@@ -59,7 +59,6 @@ function App() {
   const [userList, setUserList] = useState([]);
   const [userSidebarVisible, setUserSidebarVisible] = useState(true);
   const [messageInput, setMessageInput] = useState("");
-  const [addMemberInput, setAddMemberInput] = useState("");
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [typingUsers, setTypingUsers] = useState([]);
   const [hasMore, setHasMore] = useState(false);
@@ -251,16 +250,6 @@ function App() {
     .catch((err) => showErr(err, "Unable to update chat"));
   }
 
-  const handleAddMember = () => {
-    if (addMemberInput.trim() === "") return;
-    api.post(`/chats/${currentChat}/members`, {username: addMemberInput.trim()})
-    .then(() => {
-      setAddMemberInput("");
-      refreshChat();
-    })
-    .catch((err) => showErr(err, "Unable to add user"));
-  }
-
   const handleKick = (member) => {
     api.delete(`/chats/${currentChat}/members/${member}`)
     .then(() => refreshChat())
@@ -397,9 +386,6 @@ function App() {
         if (event.chatId === currentChatRef.current) {
           refreshChatInfo(event.chatId);
         }
-        break;
-      case "chat:joined":
-        getChats();
         break;
       case "kicked":
         getChats();
@@ -751,13 +737,6 @@ function App() {
                 ))
               )}
             </div>
-            {currentChat && chatInfo && isAdmin ? (
-              <div id="add_member">
-                <input placeholder="add user" value={addMemberInput} onChange={(e) => setAddMemberInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleAddMember(); }} />
-                <button onClick={handleAddMember}>add</button>
-              </div>
-            ) : null}
           </div>
         )}
       </div>
