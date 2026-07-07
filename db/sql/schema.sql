@@ -12,14 +12,24 @@ CREATE TABLE chats (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     author TEXT NOT NULL REFERENCES users(name),
     name TEXT NOT NULL,
+    invite_code TEXT NOT NULL UNIQUE,
+    discoverable BOOLEAN NOT NULL DEFAULT true,
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     data JSONB
+);
+
+CREATE TABLE chat_members (
+    chat_id UUID NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    user_name TEXT NOT NULL REFERENCES users(name),
+    role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('admin', 'member')),
+    date_joined TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (chat_id, user_name)
 );
 
 CREATE TABLE messages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     sender_name TEXT REFERENCES users(name),
-    chat_id UUID REFERENCES chats(id),
+    chat_id UUID REFERENCES chats(id) ON DELETE CASCADE,
     message TEXT,
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     data JSONB
