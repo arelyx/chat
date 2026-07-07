@@ -3,3 +3,5 @@ dist
 backend/uploads
 tmp_docs
 .git
+.env
+**/.env
