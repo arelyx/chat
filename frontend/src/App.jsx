@@ -146,7 +146,7 @@ function App() {
     )
   }
 
-  const switchChat = (chatId, chatName) => {
+  const switchChat = (chatId) => {
     console.log(`Switching to chat: ${chatId}`);
     axios.get(`${url}/chats/${chatId}`)
     .then(
@@ -165,14 +165,14 @@ function App() {
           }
         )
         .catch(
-          (err) => {
+          () => {
             setError("Unable to get messages");
             setShowError(true);
           }
         )
       }
     ).catch(
-      (err) => {
+      () => {
         setError("Unable to get chat");
         setShowError(true);
       }
@@ -194,7 +194,7 @@ function App() {
       }
     )
     .catch(
-      (err) => {
+      () => {
         setError("Unable to delete chat");
         setShowError(true);
       }
@@ -213,7 +213,7 @@ function App() {
       }
     )
     .catch(
-      (err) => {
+      () => {
         setError("Unable to get users");
         setShowError(true);
       }
@@ -241,12 +241,12 @@ function App() {
           // Scroll to bottom after new message is added
           setTimeout(() => scrollToBottom(), 100);
         })
-        .catch((err) => {
+        .catch(() => {
           setError("Unable to refresh messages");
           setShowError(true);
         });
     })
-    .catch((err) => {
+    .catch(() => {
       setError("Unable to send message");
       setShowError(true);
     });
@@ -275,7 +275,7 @@ function App() {
         (err) => {
           console.log(err);
           setLoggedIn(false);
-          setuserToken("");
+          setUserToken("");
         }
       )
     }
@@ -340,8 +340,8 @@ function App() {
               <div id="chats">
                 {chatList.map((chat) => {
                   return (
-                    <div id="chat">
-                      <p key={chat.id} onClick={() => (console.log("clicked!"))}><a href="" onClick={(e)=>{e.preventDefault();switchChat(chat.id, chat.name)}}>{chat.name}</a></p>
+                    <div id="chat" key={chat.id}>
+                      <p><a href="" onClick={(e)=>{e.preventDefault();switchChat(chat.id)}}>{chat.name}</a></p>
                     </div>
                   )
                 }
