@@ -4,10 +4,19 @@ import axios from "axios"
 import './App.css'
 
 // timestamps arrive as UTC; all display formatting happens here in local time
-const fmtMsgDate = (iso) => {
+const pad = (n) => String(n).padStart(2, "0");
+
+const fmtTime = (d) => {
+  const ampm = d.getHours() >= 12 ? "pm" : "am";
+  return `${pad(d.getHours() % 12 || 12)}:${pad(d.getMinutes())}${ampm}`;
+};
+
+// same day: just the time; older: date and time
+const fmtMsgStamp = (iso) => {
   const d = new Date(iso);
-  const pad = (n) => String(n).padStart(2, "0");
-  return `${pad(d.getMonth() + 1)}/${pad(d.getDate())}/${d.getFullYear()}`;
+  const now = new Date();
+  const sameDay = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+  return sameDay ? fmtTime(d) : `${pad(d.getMonth() + 1)}/${pad(d.getDate())}/${d.getFullYear()} ${fmtTime(d)}`;
 };
 
 const fmtHeaderDate = (iso) => {
@@ -16,7 +25,7 @@ const fmtHeaderDate = (iso) => {
   const suffix = day % 10 === 1 && day !== 11 ? "st"
     : day % 10 === 2 && day !== 12 ? "nd"
     : day % 10 === 3 && day !== 13 ? "rd" : "th";
-  return `${d.toLocaleString("en-US", {month: "long"})} ${day}${suffix}, ${d.getFullYear()}`;
+  return `${d.toLocaleString("en-US", {month: "long"}).toLowerCase()} ${day}${suffix}, ${d.getFullYear()}`;
 };
 
 const GAP_MS = 15 * 60 * 1000;
@@ -98,6 +107,7 @@ function App() {
     usernameRef.current = "";
     setChatList([]);
     closeChat();
+    getDiscoverable();
   }
 
   const handleRegister = () => {
@@ -205,6 +215,11 @@ function App() {
   }
 
   const handleJoinByCode = () => {
+    if (!loggedIn) {
+      setError("log in to join chats");
+      setShowError(true);
+      return;
+    }
     if (inviteCodeInput.trim() === "") {
       setError("invite code is empty");
       setShowError(true);
@@ -444,6 +459,7 @@ function App() {
 
   useEffect(() => {
     getUsers();
+    getDiscoverable();
   }, []);
 
   useEffect(() => {
@@ -508,7 +524,7 @@ function App() {
           <div id="sidebar">
             <div id="sidebar_mode">
               <button disabled={sidebarMode === "chats"} onClick={() => setSidebarMode("chats")}>my chats</button>
-              <button disabled={sidebarMode === "join"} onClick={() => {setSidebarMode("join"); if (loggedIn) getDiscoverable();}}>join</button>
+              <button disabled={sidebarMode === "join"} onClick={() => {setSidebarMode("join"); getDiscoverable();}}>join</button>
             </div>
             {sidebarMode === "chats" ? (
               <>
@@ -553,9 +569,7 @@ function App() {
                 </div>
                 <div id="chats_container">
                   <div id="chats">
-                    {!loggedIn ? (
-                      <p>log in to browse chats</p>
-                    ) : discoverList.length === 0 ? (
+                    {discoverList.length === 0 ? (
                       <p>no public chats found...</p>
                     ) : (
                       discoverList.map((chat) => (
@@ -565,9 +579,9 @@ function App() {
                             {" "}
                             {chat.joined ? (
                               <span>(joined)</span>
-                            ) : (
+                            ) : loggedIn ? (
                               <a href="" onClick={(e)=>{e.preventDefault();handleJoinPublic(chat.id)}}>[join]</a>
-                            )}
+                            ) : null}
                           </p>
                         </div>
                       ))
@@ -641,10 +655,10 @@ function App() {
                   messages.map((msg, idx) => (
                     <div key={msg.id}>
                       {idx > 0 && new Date(msg.timestamp) - new Date(messages[idx - 1].timestamp) > GAP_MS ? (
-                        <p className="date_header">————— {fmtHeaderDate(msg.timestamp)} —————</p>
+                        <p className="date_header">{fmtHeaderDate(msg.timestamp)}</p>
                       ) : null}
                       <p>
-                        <span className="msg_time" title={new Date(msg.timestamp).toLocaleString()}>{fmtMsgDate(msg.timestamp)}</span>{" "}
+                        <span className="msg_time" title={new Date(msg.timestamp).toLocaleString()}>{fmtMsgStamp(msg.timestamp)}</span>{" "}
                         <span><b>{msg.sender_name}:</b></span>{" "}
                         {msg.data?.image ? (
                           <img className="chat_image" src={msg.data.image} alt="uploaded image" />
@@ -693,7 +707,11 @@ function App() {
                 </div>
               ) : (
                 <div id="chat_input">
-                  <button onClick={() => handleJoinPublic(currentChat)}>join chat to send messages</button>
+                  {loggedIn ? (
+                    <button className="join_button" onClick={() => handleJoinPublic(currentChat)}>join chat to send messages</button>
+                  ) : (
+                    <button className="join_button" onClick={() => {setError("log in to join chats"); setShowError(true);}}>log in to send messages</button>
+                  )}
                 </div>
               )
             ) : null}
