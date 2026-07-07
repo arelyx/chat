@@ -26,6 +26,14 @@ CREATE TABLE chat_members (
     PRIMARY KEY (chat_id, user_name)
 );
 
+CREATE TABLE emotes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    chat_id UUID NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    file TEXT NOT NULL,
+    UNIQUE (chat_id, name)
+);
+
 CREATE TABLE messages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     sender_name TEXT REFERENCES users(name),
