@@ -316,3 +316,21 @@ html, body {
   min-width: 0;
   margin-right: 5px;
 }
+
+.online {
+  color: green;
+}
+
+.offline {
+  color: #bbb;
+}
+
+#typing {
+  flex: 0 0 auto;
+  padding: 0px 10px;
+}
+
+#typing p {
+  margin: 2px 0;
+  color: #555;
+}
